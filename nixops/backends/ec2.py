@@ -528,7 +528,7 @@ class EC2State(MachineState, nixops.resources.ec2_common.EC2CommonState):
 
                 if v.get('partOfImage', False) or v.get('charonDeleteOnTermination', False) or v.get('deleteOnTermination', False):
                     new_v['charonDeleteOnTermination'] = True
-                    self._delete_volume(v['volumeId'], True)
+                    nixops.ec2_utils.delete_volume(self.connect(), v['volumeId'], self.logger, True)
                 new_v['volumeId'] = new_volume.id
                 self.update_block_device_mapping(device_stored, new_v)
 
@@ -845,7 +845,7 @@ class EC2State(MachineState, nixops.resources.ec2_common.EC2CommonState):
                         # FIXME: Wait until the volume is actually detached.
 
                 if v.get('charonDeleteOnTermination', False) or v.get('deleteOnTermination', False):
-                    self._delete_volume(v['volumeId'])
+                    nixops.ec2_utils.delete_volume(self.connect(), v['volumeId'], self.logger)
 
                 self.update_block_device_mapping(device_stored, None)
 
@@ -1358,19 +1358,6 @@ class EC2State(MachineState, nixops.resources.ec2_common.EC2CommonState):
         self._retry_route53(lambda: changes.commit(), error_codes=['InvalidChangeBatch'])
 
 
-    def _delete_volume(self, volume_id, allow_keep=False):
-        if not self.depl.logger.confirm("are you sure you want to destroy EBS volume ‘{0}’?".format(volume_id)):
-            if allow_keep:
-                return
-            else:
-                raise Exception("not destroying EBS volume ‘{0}’".format(volume_id))
-        self.log("destroying EBS volume ‘{0}’...".format(volume_id))
-        volume = nixops.ec2_utils.get_volume_by_id(self.connect(), volume_id, allow_missing=True)
-        if not volume: return
-        nixops.util.check_wait(lambda: volume.update() == 'available')
-        volume.delete()
-
-
     def destroy(self, wipe=False):
         self._cancel_spot_request()
 
@@ -1412,7 +1399,7 @@ class EC2State(MachineState, nixops.resources.ec2_common.EC2CommonState):
         # Destroy volumes created for this instance.
         for device_stored, v in self.block_device_mapping.items():
             if v.get('charonDeleteOnTermination', False):
-                self._delete_volume(v['volumeId'], True)
+                nixops.ec2_utils.delete_volume(self.connect(), v['volumeId'], self.logger, True)
                 self.update_block_device_mapping(device_stored, None)
 
         return True

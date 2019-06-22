@@ -175,6 +175,19 @@ def wait_for_volume_available(conn, volume_id, logger, states=['available']):
     logger.log_end('')
 
 
+def delete_volume(conn, volume_id, logger, allow_keep=False):
+    if not logger.confirm("are you sure you want to destroy EBS volume ‘{0}’?".format(volume_id)):
+        if allow_keep:
+            return
+        else:
+            raise Exception("not destroying EBS volume ‘{0}’".format(volume_id))
+    volume = get_volume_by_id(conn, volume_id, allow_missing=True)
+    if not volume: return
+    nixops.util.check_wait(lambda: volume.update() == 'available')
+    logger.log("destroying EBS volume ‘{0}’...".format(volume_id))
+    volume.delete()
+
+
 def name_to_security_group(conn, name, vpc_id):
     if not vpc_id or name.startswith('sg-'):
         return name

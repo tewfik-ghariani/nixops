@@ -172,9 +172,7 @@ class EBSVolumeState(nixops.resources.ResourceState, nixops.resources.ec2_common
             log.warn("wipe is not supported")
 
         self.connect(self.region)
-        volume = nixops.ec2_utils.get_volume_by_id(self._conn, self.volume_id, allow_missing=True)
-        if not volume: return True
-        if not self.depl.logger.confirm("are you sure you want to destroy EBS volume ‘{0}’?".format(self.name)): return False
-        self.log("destroying EBS volume ‘{0}’...".format(self.volume_id))
-        volume.delete()
+        nixops.ec2_utils.delete_volume(self._conn, v['volumeId'], self.logger, True)
+        #TODO Update the mother instance block device mapping
+        #update_block_device_mapping(device_stored, None)
         return True
