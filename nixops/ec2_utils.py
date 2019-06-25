@@ -183,6 +183,8 @@ def delete_volume(conn, volume_id, logger, allow_keep=False):
             raise Exception("not destroying EBS volume ‘{0}’".format(volume_id))
     volume = get_volume_by_id(conn, volume_id, allow_missing=True)
     if not volume: return
+    if volume.update () == "attached":
+        raise Exception("cannot destroy volume '{0}' while it is attached. Please stop/destroy the instance first".format(volume_id))
     nixops.util.check_wait(lambda: volume.update() == 'available')
     logger.log("destroying EBS volume ‘{0}’...".format(volume_id))
     volume.delete()
